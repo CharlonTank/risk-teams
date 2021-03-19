@@ -1,6 +1,7 @@
-module Main exposing (main)
+module Frontend exposing (..)
 
-import Browser
+import Browser exposing (UrlRequest(..))
+import Browser.Navigation as Nav
 import Color.OneDark as OneDark exposing (..)
 import Element exposing (..)
 import Element.Background as Background
@@ -9,88 +10,208 @@ import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Element.Region as Region
+import Html
+import Html.Attributes as Attr
+import Lamdera
 import Random
 import Random.List
+import Types exposing (..)
+import Url
 
 
 type alias Model =
-    { players : List Player
-    , teams : List ( Player, Player )
-    , missions : List String
-    , hasBegun : Bool
-    , teamOpened : Maybe String
-    }
+    FrontendModel
 
 
-type alias Player =
-    { color : Element.Color
-    , name : String
-    , showed : Bool
-    , mission : String
-    }
+app =
+    Lamdera.frontend
+        { init = init
+        , onUrlRequest = UrlClicked
+        , onUrlChange = UrlChanged
+        , update = update
+        , updateFromBackend = updateFromBackend
+        , subscriptions = \m -> Sub.none
+        , view = view
+        }
+
+
+init : Url.Url -> Nav.Key -> ( Model, Cmd FrontendMsg )
+init url key =
+    ( { key = key
+      , message = "Welcome to Lamdera! You're looking at the auto-generated base implementation. Check out src/Frontend.elm to start coding!"
+      , players =
+            [ Player blue "Bleu" False ""
+            , Player darkYellow "Jaune" False ""
+            , Player green "Vert" False ""
+            , Player magenta "Magenta" False ""
+            , Player black "Noir" False ""
+            , Player darkRed "Rouge" False ""
+            ]
+      , teams = []
+      , missions =
+            [ "Capturer l'Europe, l'Australie et un autre continent"
+            , "Capturer l'Europe, l'Amérique du Sud et un autre continent"
+            , "Capturer l'Amérique du Nord et l'Afrique"
+            , "Capturer l'Asie et l'Amérique du Sud"
+            , "Capturer l'Amérique du Nord et l'Australie"
+            , "Capturer 24 territoires"
+            , "Détruire toutes les armées des bleus ou, dans le cas d'être soi-même le joueur nommé, capturer 24 territoires"
+            , "Détruire toutes les armées des jaunes ou, dans le cas où vous êtes vous-même le joueur nommé, capturer 24 territoires"
+            , "Détruire toutes les armées des verts ou, si l'on est soi-même le joueur désigné, capturer 24 territoires"
+            , "Détruire toutes les armées des magentas ou, si l'on est soi-même le joueur désigné, capturer 24 territoires"
+            , "Détruire toutes les armées de noirs ou, si l'on est soi-même le joueur désigné, capturer 24 territoires"
+            , "Détruire toutes les armées des rouges ou, si l'on est soi-même le joueur désigné, capturer 24 territoires"
+            , "Capturer 18 territoires et les occuper avec deux troupes minimum"
+            ]
+      , hasBegun = False
+      , teamOpened = Nothing
+      }
+    , Cmd.none
+    )
+
+
+update : FrontendMsg -> Model -> ( Model, Cmd FrontendMsg )
+update msg model =
+    case msg of
+        UrlClicked urlRequest ->
+            case urlRequest of
+                Internal url ->
+                    ( model
+                    , Cmd.batch [ Nav.pushUrl model.key (Url.toString url) ]
+                    )
+
+                External url ->
+                    ( model
+                    , Nav.load url
+                    )
+
+        UrlChanged url ->
+            ( model, Cmd.none )
+
+        NoOpFrontendMsg ->
+            ( model, Cmd.none )
+
+        CheckboxClicked value ->
+            ( model, Cmd.none )
+
+        RadioClicked value ->
+            ( model, Cmd.none )
+
+        TextChanged value ->
+            ( model, Cmd.none )
+
+        BeginGame ->
+            ( { model | hasBegun = True }
+            , Random.generate ReceiveRandomPlayers (Random.List.shuffle model.players)
+            )
+
+        ReceiveRandomPlayers newList ->
+            let
+                teams =
+                    case newList of
+                        [ a, b, c, d, e, f ] ->
+                            [ ( a, b ), ( c, d ), ( e, f ), ( b, a ), ( d, c ), ( f, e ) ]
+
+                        _ ->
+                            []
+            in
+            ( { model | players = newList, teams = teams }
+            , Random.generate ReceiveRandomMissions (Random.List.shuffle model.missions)
+            )
+
+        ReceiveRandomMissions newList ->
+            ( { model | missions = newList, players = fillMissionToPlayers model.players newList, teams = fillMissionsToTeams (Debug.log "Old TEAMS:" model.teams) newList }, Cmd.none )
+
+        ShowTeamMate playerName ->
+            ( { model
+                | teams = updateTeamsWithShowed playerName model.teams
+                , teamOpened =
+                    case model.teamOpened of
+                        Just teamOpened ->
+                            Nothing
+
+                        Nothing ->
+                            Debug.log "sadas" <| Just playerName
+              }
+            , Cmd.none
+            )
+
+        ChangeMission playerName newMissionInput ->
+            ( { model | teams = updateTeamsWithNewMission playerName newMissionInput model.teams }, Cmd.none )
+
+
+updateFromBackend : ToFrontend -> Model -> ( Model, Cmd FrontendMsg )
+updateFromBackend msg model =
+    case msg of
+        NoOpToFrontend ->
+            ( model, Cmd.none )
 
 
 view model =
-    Element.layout
-        [ Element.width Element.fill, Element.centerX ]
-        (Element.column
-            [ Background.color <| rgba255 255 255 255 1
-            , Background.image
-                "https://cdn.pixabay.com/photo/2019/06/30/20/55/board-of-risk-4308773_1280.png"
-            , Font.color <| rgba255 46 52 54 1
-            , Font.family
-                [ Font.typeface "system-ui"
-                , Font.typeface "-apple-system"
-                , Font.typeface "sans-serif"
+    { title = ""
+    , body =
+        [ Element.layout
+            [ Element.width Element.fill, Element.centerX ]
+            (Element.column
+                [ Background.color <| rgba255 255 255 255 1
+                , Background.image
+                    "https://cdn.pixabay.com/photo/2019/06/30/20/55/board-of-risk-4308773_1280.png"
+                , Font.color <| rgba255 46 52 54 1
+                , Font.family
+                    [ Font.typeface "system-ui"
+                    , Font.typeface "-apple-system"
+                    , Font.typeface "sans-serif"
+                    ]
+                , Font.size 12
+                , height fill
+                , width fill
                 ]
-            , Font.size 12
-            , height fill
-            , width fill
-            ]
-            [ if not model.hasBegun then
-                Element.paragraph
-                    [ Font.center
-                    , Font.letterSpacing 5
-                    , Font.bold
-                    , Font.color <| rgba255 46 52 54 1
-                    , Font.size 36
-                    , Element.height Element.shrink
-                    , Element.width Element.fill
-                    , Element.paddingXY 16 16
-                    , Region.heading 1
-                    ]
-                    [ Element.text "Teams-Risk" ]
+                [ if not model.hasBegun then
+                    Element.paragraph
+                        [ Font.center
+                        , Font.letterSpacing 5
+                        , Font.bold
+                        , Font.color <| rgba255 46 52 54 1
+                        , Font.size 36
+                        , Element.height Element.shrink
+                        , Element.width Element.fill
+                        , Element.paddingXY 16 16
+                        , Region.heading 1
+                        ]
+                        [ Element.text "Teams-Risk" ]
 
-              else
-                none
-            , if not model.hasBegun then
-                Input.button
-                    [ Background.color <| rgba255 52 101 164 1
-                    , Element.centerY
-                    , Element.centerX
-                    , Font.center
-                    , Font.color <| rgba255 255 255 255 1
-                    , Font.size 30
-                    , Element.height Element.shrink
-                    , Element.width Element.shrink
-                    , Element.paddingXY 16 16
-                    , Border.rounded 2
-                    , Border.color <| rgba255 52 101 164 1
-                    , Border.solid
-                    , Border.widthXY 1 1
-                    ]
-                    { onPress = Just BeginGame
-                    , label = Element.text "\u{1F977} GO 🧙\u{200D}♂️"
-                    }
+                  else
+                    none
+                , if not model.hasBegun then
+                    Input.button
+                        [ Background.color <| rgba255 52 101 164 1
+                        , Element.centerY
+                        , Element.centerX
+                        , Font.center
+                        , Font.color <| rgba255 255 255 255 1
+                        , Font.size 30
+                        , Element.height Element.shrink
+                        , Element.width Element.shrink
+                        , Element.paddingXY 16 16
+                        , Border.rounded 2
+                        , Border.color <| rgba255 52 101 164 1
+                        , Border.solid
+                        , Border.widthXY 1 1
+                        ]
+                        { onPress = Just BeginGame
+                        , label = Element.text "\u{1F977} GO 🧙\u{200D}♂️"
+                        }
 
-              else
-                none
-            , el [ centerX, centerY, paddingXY 32 32 ] <| showTeams model.teams model.teamOpened
-            ]
-        )
+                  else
+                    none
+                , el [ centerX, centerY, paddingXY 32 32 ] <| showTeams model.teams model.teamOpened
+                ]
+            )
+        ]
+    }
 
 
-showTeams : List ( Player, Player ) -> Maybe String -> Element Msg
+showTeams : List ( Player, Player ) -> Maybe String -> Element FrontendMsg
 showTeams teams teamOpened =
     wrappedRow
         [ centerX
@@ -101,7 +222,7 @@ showTeams teams teamOpened =
         (List.map (showTeam teamOpened) teams)
 
 
-showTeam : Maybe String -> ( Player, Player ) -> Element Msg
+showTeam : Maybe String -> ( Player, Player ) -> Element FrontendMsg
 showTeam teamOpened team =
     case teamOpened of
         Just playerName ->
@@ -141,7 +262,7 @@ showMissionIfClicked player =
         none
 
 
-showMissionsIfClicked : Bool -> Player -> Element Msg
+showMissionsIfClicked : Bool -> Player -> Element FrontendMsg
 showMissionsIfClicked isOpen player =
     if isOpen then
         column [ width <| px 140, height <| px 140, Background.color player.color, Border.rounded 9, paddingXY 12 12 ]
@@ -209,18 +330,6 @@ showPlayer player =
           <|
             text player.name
         ]
-
-
-type Msg
-    = CheckboxClicked Bool
-    | RadioClicked Int
-    | TextChanged String
-    | BeginGame
-    | ReceiveRandomPlayers (List Player)
-    | ReceiveRandomMissions (List String)
-    | ShowTeamMate String
-    | ChangeMission String String
-
 
 
 fillMissionsToTeams : List ( Player, Player ) -> List String -> List ( Player, Player )
@@ -394,48 +503,6 @@ updateTeamsWithNewMission playerName newMission teams =
                     []
     in
     newTeams
-
-
-init : Flags -> ( Model, Cmd msg )
-init _ =
-    ( { players =
-            [ Player blue "Bleu" False ""
-            , Player darkYellow "Jaune" False ""
-            , Player green "Vert" False ""
-            , Player magenta "Magenta" False ""
-            , Player black "Noir" False ""
-            , Player darkRed "Rouge" False ""
-            ]
-      , teams = []
-      , missions =
-            [ "Capturer l'Europe, l'Australie et un autre continent"
-            , "Capturer l'Europe, l'Amérique du Sud et un autre continent"
-            , "Capturer l'Amérique du Nord et l'Afrique"
-            , "Capturer l'Asie et l'Amérique du Sud"
-            , "Capturer l'Amérique du Nord et l'Australie"
-            , "Capturer 24 territoires"
-            , "Détruire toutes les armées des bleus ou, dans le cas d'être soi-même le joueur nommé, capturer 24 territoires"
-            , "Détruire toutes les armées des jaunes ou, dans le cas où vous êtes vous-même le joueur nommé, capturer 24 territoires"
-            , "Détruire toutes les armées des verts ou, si l'on est soi-même le joueur désigné, capturer 24 territoires"
-            , "Détruire toutes les armées des magentas ou, si l'on est soi-même le joueur désigné, capturer 24 territoires"
-            , "Détruire toutes les armées de noirs ou, si l'on est soi-même le joueur désigné, capturer 24 territoires"
-            , "Détruire toutes les armées des rouges ou, si l'on est soi-même le joueur désigné, capturer 24 territoires"
-            , "Capturer 18 territoires et les occuper avec deux troupes minimum"
-            ]
-      , hasBegun = False
-      , teamOpened = Nothing
-      }
-    , Cmd.none
-    )
-
-
-main : Program Flags Model Msg
-main =
-    Browser.element { init = init, view = view, update = update, subscriptions = subscriptions }
-
-
-type alias Flags =
-    ()
 
 
 subscriptions : Model -> Sub msg
