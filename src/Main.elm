@@ -17,6 +17,8 @@ import Tuple3
 type alias Model =
     { players : List Player
     , teams : List ( Player, Player )
+    , missions : List String
+    , hasBegun : Bool
     }
 
 
@@ -32,50 +34,57 @@ view model =
     Element.layout
         [ Element.width Element.fill, Element.centerX ]
         (Element.column
-            [ Background.color (Element.rgba255 255 255 255 1)
+            [ Background.color <| rgba255 255 255 255 1
             , Background.image
                 "https://cdn.pixabay.com/photo/2019/06/30/20/55/board-of-risk-4308773_1280.png"
-            , Font.color (Element.rgba255 46 52 54 1)
+            , Font.color <| rgba255 46 52 54 1
             , Font.family
                 [ Font.typeface "system-ui"
                 , Font.typeface "-apple-system"
                 , Font.typeface "sans-serif"
                 ]
-            , Font.size 16
-            , Element.height Element.fill
-            , Element.width Element.fill
-            , spacing 32
+            , Font.size 12
+            , height fill
+            , width fill
             ]
-            [ Element.paragraph
-                [ Font.center
-                , Font.letterSpacing 5
-                , Font.bold
-                , Font.color (Element.rgba255 46 52 54 1)
-                , Font.size 36
-                , Element.height Element.shrink
-                , Element.width Element.fill
-                , Element.paddingXY 16 16
-                , Region.heading 1
-                ]
-                [ Element.text "Teams-Risk" ]
-            , Input.button
-                [ Background.color (Element.rgba255 52 101 164 1)
-                , Element.centerY
-                , Element.centerX
-                , Font.center
-                , Font.color (Element.rgba255 255 255 255 1)
-                , Font.size 30
-                , Element.height Element.shrink
-                , Element.width Element.shrink
-                , Element.paddingXY 16 16
-                , Border.rounded 2
-                , Border.color (Element.rgba255 52 101 164 1)
-                , Border.solid
-                , Border.widthXY 1 1
-                ]
-                { onPress = Just BeginGame
-                , label = Element.text "\u{1F977} BEGIN THE GAME 🧙\u{200D}♂️"
-                }
+            [ if not model.hasBegun then
+                Element.paragraph
+                    [ Font.center
+                    , Font.letterSpacing 5
+                    , Font.bold
+                    , Font.color <| rgba255 46 52 54 1
+                    , Font.size 36
+                    , Element.height Element.shrink
+                    , Element.width Element.fill
+                    , Element.paddingXY 16 16
+                    , Region.heading 1
+                    ]
+                    [ Element.text "Teams-Risk" ]
+
+              else
+                none
+            , if not model.hasBegun then
+                Input.button
+                    [ Background.color <| rgba255 52 101 164 1
+                    , Element.centerY
+                    , Element.centerX
+                    , Font.center
+                    , Font.color <| rgba255 255 255 255 1
+                    , Font.size 30
+                    , Element.height Element.shrink
+                    , Element.width Element.shrink
+                    , Element.paddingXY 16 16
+                    , Border.rounded 2
+                    , Border.color <| rgba255 52 101 164 1
+                    , Border.solid
+                    , Border.widthXY 1 1
+                    ]
+                    { onPress = Just BeginGame
+                    , label = Element.text "\u{1F977} GO 🧙\u{200D}♂️"
+                    }
+
+              else
+                none
             , el [ centerX, centerY ] <| showTeams model.teams
             ]
         )
@@ -87,7 +96,7 @@ showTeams teams =
         [ centerX
         , width fill
         , height fill
-        , spacing 32
+        , spacing 22
         ]
         (List.map showTeam teams)
 
@@ -95,21 +104,46 @@ showTeams teams =
 showTeam : ( Player, Player ) -> Element Msg
 showTeam team =
     column
-        [ spacing 32
+        [ spacing 22
         ]
-        [ showPlayer <| Tuple.first team, showMissionInputIfClicked <| Tuple.second team, showPlayerIfClicked <| Tuple.second team ]
+        [ showPlayer <| Tuple.first team, showMissionsIfClicked (.showed <| Tuple.second team) (Tuple.first team), showPlayerIfClicked <| Tuple.second team, showMissionIfClicked <| Tuple.second team ]
 
 
-showMissionInputIfClicked player =
+showMissionIfClicked player =
     if player.showed then
-        column [ width <| px 150, height <| px 100, Background.color player.color ]
+        column [ width <| px 140, height <| px 140, Background.color player.color, Border.rounded 9, paddingXY 12 12 ]
             [ el [ centerX, centerY ] <|
-                Input.text []
-                    { onChange = ChangeMission player.name
-                    , text = player.mission
-                    , placeholder = Nothing
-                    , label = Input.labelHidden "Mission"
-                    }
+                paragraph
+                    [ Font.color
+                        (if player.color == OneDark.black then
+                            OneDark.white
+
+                         else
+                            OneDark.black
+                        )
+                    ]
+                    [ text player.mission ]
+            ]
+
+    else
+        none
+
+
+showMissionsIfClicked : Bool -> Player -> Element Msg
+showMissionsIfClicked isOpen player =
+    if isOpen then
+        column [ width <| px 140, height <| px 140, Background.color player.color, Border.rounded 9, paddingXY 12 12 ]
+            [ el [ centerX, centerY ] <|
+                paragraph
+                    [ Font.color
+                        (if player.color == OneDark.black then
+                            OneDark.white
+
+                         else
+                            OneDark.black
+                        )
+                    ]
+                    [ text player.mission ]
             ]
 
     else
@@ -118,16 +152,44 @@ showMissionInputIfClicked player =
 
 showPlayerIfClicked player =
     if player.showed then
-        column [ width <| px 150, height <| px 150, Background.color player.color ]
-            [ el [ centerX, centerY, Font.size 22 ] <| text player.name ]
+        column [ width <| px 140, height <| px 140, Background.color player.color, Border.rounded 9, paddingXY 12 12 ]
+            [ el
+                [ centerX
+                , centerY
+                , Font.size 22
+                , Font.color
+                    (if player.color == OneDark.black then
+                        OneDark.white
+
+                     else
+                        OneDark.black
+                    )
+                ]
+              <|
+                text player.name
+            ]
 
     else
         none
 
 
 showPlayer player =
-    column [ Events.onClick <| ShowTeamMate player.name, pointer, width <| px 150, height <| px 150, Background.color player.color, Border.rounded 9 ]
-        [ el [ centerX, centerY, Font.size 22 ] <| text player.name ]
+    column [ Events.onClick <| ShowTeamMate player.name, pointer, width <| px 140, height <| px 140, Background.color player.color, Border.rounded 9 ]
+        [ el
+            [ centerX
+            , centerY
+            , Font.size 22
+            , Font.color
+                (if player.color == OneDark.black then
+                    OneDark.white
+
+                 else
+                    OneDark.black
+                )
+            ]
+          <|
+            text player.name
+        ]
 
 
 type Msg
@@ -135,7 +197,8 @@ type Msg
     | RadioClicked Int
     | TextChanged String
     | BeginGame
-    | ReceiveRandomList (List Player)
+    | ReceiveRandomPlayers (List Player)
+    | ReceiveRandomMissions (List String)
     | ShowTeamMate String
     | ChangeMission String String
 
@@ -153,9 +216,11 @@ update msg model =
             ( model, Cmd.none )
 
         BeginGame ->
-            ( model, Random.generate ReceiveRandomList (Random.List.shuffle model.players) )
+            ( { model | hasBegun = True }
+            , Random.generate ReceiveRandomPlayers (Random.List.shuffle model.players)
+            )
 
-        ReceiveRandomList newList ->
+        ReceiveRandomPlayers newList ->
             let
                 teams =
                     case newList of
@@ -165,7 +230,12 @@ update msg model =
                         _ ->
                             []
             in
-            ( { model | players = newList, teams = teams }, Cmd.none )
+            ( { model | players = newList, teams = teams }
+            , Random.generate ReceiveRandomMissions (Random.List.shuffle model.missions)
+            )
+
+        ReceiveRandomMissions newList ->
+            ( { model | missions = newList, players = fillMissionToPlayers model.players newList, teams = fillMissionsToTeams (Debug.log "Old TEAMS:" model.teams) newList }, Cmd.none )
 
         ShowTeamMate playerName ->
             ( { model | teams = updateTeamsWithShowed playerName model.teams }, Cmd.none )
@@ -174,15 +244,39 @@ update msg model =
             ( { model | teams = updateTeamsWithNewMission playerName newMissionInput model.teams }, Cmd.none )
 
 
+fillMissionsToTeams : List ( Player, Player ) -> List String -> List ( Player, Player )
+fillMissionsToTeams teams missions =
+    Debug.log ("teams" ++ String.fromInt (List.length teams) ++ "missions" ++ String.fromInt (List.length missions)) <|
+        case ( teams, missions ) of
+            ( [ ( a, b ), ( c, d ), ( e, f ), ( bb, aa ), ( dd, cc ), ( ff, ee ) ], ma :: mb :: mc :: md :: me :: mf :: l ) ->
+                [ ( { a | mission = ma }, { b | mission = mb } )
+                , ( { c | mission = mc }, { d | mission = md } )
+                , ( { e | mission = me }, { f | mission = mf } )
+                , ( { bb | mission = mb }, { aa | mission = ma } )
+                , ( { dd | mission = md }, { cc | mission = mc } )
+                , ( { ff | mission = mf }, { ee | mission = me } )
+                ]
+
+            _ ->
+                teams
+
+
+fillMissionToPlayers : List Player -> List String -> List Player
+fillMissionToPlayers players missions =
+    Debug.log "newPlayerList: " <| List.map2 fillMissionToPlayer players missions
+
+
+fillMissionToPlayer player mission =
+    { player | mission = mission }
+
+
 updateTeamsWithShowed playerName teams =
     let
         newTeams =
             case teams of
                 [ ( a, aa ), ( b, bb ), ( c, cc ), ( d, dd ), ( e, ee ), ( f, ff ) ] ->
                     if a.name == playerName then
-                        [ ( a
-                          , { aa | showed = not aa.showed }
-                          )
+                        [ ( a, { aa | showed = not aa.showed } )
                         , ( b, bb )
                         , ( c, cc )
                         , ( d, dd )
@@ -327,14 +421,30 @@ updateTeamsWithNewMission playerName newMission teams =
 init : Flags -> ( Model, Cmd msg )
 init _ =
     ( { players =
-            [ Player blue "blue" False ""
-            , Player darkYellow "darkYellow" False ""
-            , Player green "green" False ""
-            , Player magenta "magenta" False ""
-            , Player black "black" False ""
-            , Player darkRed "darkRed" False ""
+            [ Player blue "Bleu" False ""
+            , Player darkYellow "Jaune" False ""
+            , Player green "Vert" False ""
+            , Player magenta "Magenta" False ""
+            , Player black "Noir" False ""
+            , Player darkRed "Rouge" False ""
             ]
       , teams = []
+      , missions =
+            [ "Capturer l'Europe, l'Australie et un autre continent"
+            , "Capturer l'Europe, l'Amérique du Sud et un autre continent"
+            , "Capturer l'Amérique du Nord et l'Afrique"
+            , "Capturer l'Asie et l'Amérique du Sud"
+            , "Capturer l'Amérique du Nord et l'Australie"
+            , "Capturer 24 territoires"
+            , "Détruire toutes les armées des bleus ou, dans le cas d'être soi-même le joueur nommé, capturer 24 territoires"
+            , "Détruire toutes les armées des jaunes ou, dans le cas où vous êtes vous-même le joueur nommé, capturer 24 territoires"
+            , "Détruire toutes les armées des verts ou, si l'on est soi-même le joueur désigné, capturer 24 territoires"
+            , "Détruire toutes les armées des magentas ou, si l'on est soi-même le joueur désigné, capturer 24 territoires"
+            , "Détruire toutes les armées de noirs ou, si l'on est soi-même le joueur désigné, capturer 24 territoires"
+            , "Détruire toutes les armées des rouges ou, si l'on est soi-même le joueur désigné, capturer 24 territoires"
+            , "Capturer 18 territoires et les occuper avec deux troupes minimum"
+            ]
+      , hasBegun = False
       }
     , Cmd.none
     )
