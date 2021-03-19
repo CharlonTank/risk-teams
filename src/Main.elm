@@ -11,7 +11,6 @@ import Element.Input as Input
 import Element.Region as Region
 import Random
 import Random.List
-import Tuple3
 
 
 type alias Model =
@@ -19,6 +18,7 @@ type alias Model =
     , teams : List ( Player, Player )
     , missions : List String
     , hasBegun : Bool
+    , teamOpened : Maybe String
     }
 
 
@@ -85,28 +85,40 @@ view model =
 
               else
                 none
-            , el [ centerX, centerY ] <| showTeams model.teams
+            , el [ centerX, centerY, paddingXY 32 32 ] <| showTeams model.teams model.teamOpened
             ]
         )
 
 
-showTeams : List ( Player, Player ) -> Element Msg
-showTeams teams =
-    row
+showTeams : List ( Player, Player ) -> Maybe String -> Element Msg
+showTeams teams teamOpened =
+    wrappedRow
         [ centerX
         , width fill
         , height fill
         , spacing 22
         ]
-        (List.map showTeam teams)
+        (List.map (showTeam teamOpened) teams)
 
 
-showTeam : ( Player, Player ) -> Element Msg
-showTeam team =
-    column
-        [ spacing 22
-        ]
-        [ showPlayer <| Tuple.first team, showMissionsIfClicked (.showed <| Tuple.second team) (Tuple.first team), showPlayerIfClicked <| Tuple.second team, showMissionIfClicked <| Tuple.second team ]
+showTeam : Maybe String -> ( Player, Player ) -> Element Msg
+showTeam teamOpened team =
+    case teamOpened of
+        Just playerName ->
+            if (.name <| Tuple.first team) == playerName then
+                column
+                    [ spacing 22
+                    ]
+                    [ showPlayer <| Tuple.first team, showMissionsIfClicked (.showed <| Tuple.second team) (Tuple.first team), showPlayerIfClicked <| Tuple.second team, showMissionIfClicked <| Tuple.second team ]
+
+            else
+                none
+
+        Nothing ->
+            column
+                [ spacing 22
+                ]
+                [ showPlayer <| Tuple.first team, showMissionsIfClicked (.showed <| Tuple.second team) (Tuple.first team), showPlayerIfClicked <| Tuple.second team, showMissionIfClicked <| Tuple.second team ]
 
 
 showMissionIfClicked player =
@@ -174,7 +186,14 @@ showPlayerIfClicked player =
 
 
 showPlayer player =
-    column [ Events.onClick <| ShowTeamMate player.name, pointer, width <| px 140, height <| px 140, Background.color player.color, Border.rounded 9 ]
+    column
+        [ Events.onClick <| ShowTeamMate player.name
+        , pointer
+        , width <| px 140
+        , height <| px 140
+        , Background.color player.color
+        , Border.rounded 9
+        ]
         [ el
             [ centerX
             , centerY
@@ -238,7 +257,18 @@ update msg model =
             ( { model | missions = newList, players = fillMissionToPlayers model.players newList, teams = fillMissionsToTeams (Debug.log "Old TEAMS:" model.teams) newList }, Cmd.none )
 
         ShowTeamMate playerName ->
-            ( { model | teams = updateTeamsWithShowed playerName model.teams }, Cmd.none )
+            ( { model
+                | teams = updateTeamsWithShowed playerName model.teams
+                , teamOpened =
+                    case model.teamOpened of
+                        Just teamOpened ->
+                            Nothing
+
+                        Nothing ->
+                            Debug.log "sadas" <| Just playerName
+              }
+            , Cmd.none
+            )
 
         ChangeMission playerName newMissionInput ->
             ( { model | teams = updateTeamsWithNewMission playerName newMissionInput model.teams }, Cmd.none )
@@ -246,19 +276,18 @@ update msg model =
 
 fillMissionsToTeams : List ( Player, Player ) -> List String -> List ( Player, Player )
 fillMissionsToTeams teams missions =
-    Debug.log ("teams" ++ String.fromInt (List.length teams) ++ "missions" ++ String.fromInt (List.length missions)) <|
-        case ( teams, missions ) of
-            ( [ ( a, b ), ( c, d ), ( e, f ), ( bb, aa ), ( dd, cc ), ( ff, ee ) ], ma :: mb :: mc :: md :: me :: mf :: l ) ->
-                [ ( { a | mission = ma }, { b | mission = mb } )
-                , ( { c | mission = mc }, { d | mission = md } )
-                , ( { e | mission = me }, { f | mission = mf } )
-                , ( { bb | mission = mb }, { aa | mission = ma } )
-                , ( { dd | mission = md }, { cc | mission = mc } )
-                , ( { ff | mission = mf }, { ee | mission = me } )
-                ]
+    case ( teams, missions ) of
+        ( [ ( a, b ), ( c, d ), ( e, f ), ( bb, aa ), ( dd, cc ), ( ff, ee ) ], ma :: mb :: mc :: md :: me :: mf :: l ) ->
+            [ ( { a | mission = ma }, { b | mission = mb } )
+            , ( { c | mission = mc }, { d | mission = md } )
+            , ( { e | mission = me }, { f | mission = mf } )
+            , ( { bb | mission = mb }, { aa | mission = ma } )
+            , ( { dd | mission = md }, { cc | mission = mc } )
+            , ( { ff | mission = mf }, { ee | mission = me } )
+            ]
 
-            _ ->
-                teams
+        _ ->
+            teams
 
 
 fillMissionToPlayers : List Player -> List String -> List Player
@@ -445,6 +474,7 @@ init _ =
             , "Capturer 18 territoires et les occuper avec deux troupes minimum"
             ]
       , hasBegun = False
+      , teamOpened = Nothing
       }
     , Cmd.none
     )
