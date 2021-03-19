@@ -2,8 +2,8 @@ module Types exposing (..)
 
 import Browser exposing (UrlRequest)
 import Browser.Navigation exposing (Key)
-import Url exposing (Url)
 import Element
+import Url exposing (Url)
 
 
 type alias FrontendModel =
@@ -18,11 +18,22 @@ type alias FrontendModel =
 
 
 type alias Player =
-    { color : Element.Color
+    { color : PlayerColor
     , name : String
     , showed : Bool
     , mission : String
     }
+
+
+type PlayerColor
+    = Blue
+    | DarkYellow
+    | Green
+    | Magenta
+    | Black
+    | DarkRed
+    | White
+
 
 type alias BackendModel =
     { message : String
@@ -41,6 +52,7 @@ type FrontendMsg
     | ReceiveRandomMissions (List String)
     | ShowTeamMate String
     | ChangeMission String String
+
 
 type ToBackend
     = NoOpToBackend

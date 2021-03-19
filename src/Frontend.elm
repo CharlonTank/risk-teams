@@ -40,12 +40,12 @@ init url key =
     ( { key = key
       , message = "Welcome to Lamdera! You're looking at the auto-generated base implementation. Check out src/Frontend.elm to start coding!"
       , players =
-            [ Player blue "Bleu" False ""
-            , Player darkYellow "Jaune" False ""
-            , Player green "Vert" False ""
-            , Player magenta "Magenta" False ""
-            , Player black "Noir" False ""
-            , Player darkRed "Rouge" False ""
+            [ Player Blue "Bleu" False ""
+            , Player DarkYellow "Jaune" False ""
+            , Player Green "Vert" False ""
+            , Player Magenta "Magenta" False ""
+            , Player Black "Noir" False ""
+            , Player DarkRed "Rouge" False ""
             ]
       , teams = []
       , missions =
@@ -242,13 +242,14 @@ showTeam teamOpened team =
                 [ showPlayer <| Tuple.first team, showMissionsIfClicked (.showed <| Tuple.second team) (Tuple.first team), showPlayerIfClicked <| Tuple.second team, showMissionIfClicked <| Tuple.second team ]
 
 
+showMissionIfClicked : Player -> Element FrontendMsg
 showMissionIfClicked player =
     if player.showed then
-        column [ width <| px 140, height <| px 140, Background.color player.color, Border.rounded 9, paddingXY 12 12 ]
+        column [ width <| px 140, height <| px 140, Background.color <| playerColorToElementColor player.color, Border.rounded 9, paddingXY 12 12 ]
             [ el [ centerX, centerY ] <|
                 paragraph
                     [ Font.color
-                        (if player.color == OneDark.black then
+                        (if player.color == Black then
                             OneDark.white
 
                          else
@@ -265,16 +266,17 @@ showMissionIfClicked player =
 showMissionsIfClicked : Bool -> Player -> Element FrontendMsg
 showMissionsIfClicked isOpen player =
     if isOpen then
-        column [ width <| px 140, height <| px 140, Background.color player.color, Border.rounded 9, paddingXY 12 12 ]
+        column [ width <| px 140, height <| px 140, Background.color <| playerColorToElementColor player.color, Border.rounded 9, paddingXY 12 12 ]
             [ el [ centerX, centerY ] <|
                 paragraph
-                    [ Font.color
-                        (if player.color == OneDark.black then
-                            OneDark.white
+                    [ Font.color <|
+                        playerColorToElementColor
+                            (if player.color == Black then
+                                White
 
-                         else
-                            OneDark.black
-                        )
+                             else
+                                Black
+                            )
                     ]
                     [ text player.mission ]
             ]
@@ -285,18 +287,19 @@ showMissionsIfClicked isOpen player =
 
 showPlayerIfClicked player =
     if player.showed then
-        column [ width <| px 140, height <| px 140, Background.color player.color, Border.rounded 9, paddingXY 12 12 ]
+        column [ width <| px 140, height <| px 140, Background.color <| playerColorToElementColor player.color, Border.rounded 9, paddingXY 12 12 ]
             [ el
                 [ centerX
                 , centerY
                 , Font.size 22
-                , Font.color
-                    (if player.color == OneDark.black then
-                        OneDark.white
+                , Font.color <|
+                    playerColorToElementColor
+                        (if player.color == Black then
+                            White
 
-                     else
-                        OneDark.black
-                    )
+                         else
+                            Black
+                        )
                 ]
               <|
                 text player.name
@@ -306,26 +309,28 @@ showPlayerIfClicked player =
         none
 
 
+showPlayer : Player -> Element FrontendMsg
 showPlayer player =
     column
         [ Events.onClick <| ShowTeamMate player.name
         , pointer
         , width <| px 140
         , height <| px 140
-        , Background.color player.color
+        , Background.color <| playerColorToElementColor player.color
         , Border.rounded 9
         ]
         [ el
             [ centerX
             , centerY
             , Font.size 22
-            , Font.color
-                (if player.color == OneDark.black then
-                    OneDark.white
+            , Font.color <|
+                playerColorToElementColor
+                    (if player.color == Black then
+                        White
 
-                 else
-                    OneDark.black
-                )
+                     else
+                        Black
+                    )
             ]
           <|
             text player.name
@@ -503,6 +508,31 @@ updateTeamsWithNewMission playerName newMission teams =
                     []
     in
     newTeams
+
+
+playerColorToElementColor : PlayerColor -> Element.Color
+playerColorToElementColor playerColor =
+    case playerColor of
+        Blue ->
+            blue
+
+        DarkYellow ->
+            darkYellow
+
+        Green ->
+            green
+
+        Magenta ->
+            magenta
+
+        Black ->
+            black
+
+        DarkRed ->
+            darkRed
+
+        White ->
+            white
 
 
 subscriptions : Model -> Sub msg
